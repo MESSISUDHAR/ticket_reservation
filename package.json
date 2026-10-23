@@ -1,0 +1,25 @@
+{
+  "name": "multi-tenant-event-reservation-system",
+  "version": "1.0.0",
+  "description": "Simple Multi-Tenant Event & Ticket Reservation System MVP",
+  "scripts": {
+    "server": "npm --prefix server start",
+    "server:dev": "npm --prefix server run dev",
+    "client": "npm --prefix client run dev",
+    "client:build": "npm --prefix client run build",
+    "migrate": "npm --prefix server run migrate",
+    "seed": "npm --prefix server run seed",
+    "test": "npm --prefix server test"
+  },
+  "keywords": [
+    "multi-tenant",
+    "event-reservation",
+    "ticket-system",
+    "concurrency",
+    "redis",
+    "postgresql",
+    "mvp"
+  ],
+  "author": "",
+  "license": "MIT"
+}

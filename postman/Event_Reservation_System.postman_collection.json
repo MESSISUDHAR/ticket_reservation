@@ -1,0 +1,371 @@
+{
+  "info": {
+    "_postman_id": "a92e105e-8b43-41bb-b892-2748831b12b5",
+    "name": "Multi-Tenant Event & Ticket Reservation System API",
+    "description": "Comprehensive Postman Collection covering all endpoints: Auth, Events, 10-Minute Reservation Holds, Concurrency-Safe Booking, Mock Payment Gateway, Organizer Analytics, and Admin Management.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "attendeeToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "organizerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "activeReservationId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Register New Attendee",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"David Miller\",\n  \"email\": \"david@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"attendee\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+          }
+        },
+        {
+          "name": "Login as Attendee",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set('attendeeToken', jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"attendee@example.com\",\n  \"password\": \"attendee123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Login as Organizer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set('organizerToken', jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"organizer@soundwave.com\",\n  \"password\": \"organizer123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Login as Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set('adminToken', jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@tickets.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Get Current User Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{attendeeToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Events & Ticket Management",
+      "item": [
+        {
+          "name": "List Upcoming Events",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/events", "host": ["{{baseUrl}}"], "path": ["api", "events"] }
+          }
+        },
+        {
+          "name": "Get Event Details by ID (Cached in Redis)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/events/1", "host": ["{{baseUrl}}"], "path": ["api", "events", "1"] }
+          }
+        },
+        {
+          "name": "Create Event (Organizer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{organizerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Cyberpunk Synthwave Night 2026\",\n  \"description\": \"Immersive retro-futuristic music experience.\",\n  \"venue\": \"District 9 Warehouse, Seattle, WA\",\n  \"event_date\": \"2026-11-20T20:00:00.000Z\",\n  \"sales_cutoff_date\": \"2026-11-18T23:59:59.000Z\",\n  \"status\": \"active\",\n  \"tickets\": [\n    {\n      \"tier_name\": \"VIP Cyber Pass\",\n      \"price\": 12000,\n      \"total_quantity\": 50\n    },\n    {\n      \"tier_name\": \"General Admission\",\n      \"price\": 4500,\n      \"total_quantity\": 200\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/events", "host": ["{{baseUrl}}"], "path": ["api", "events"] }
+          }
+        },
+        {
+          "name": "Update Event (Organizer)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{organizerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"venue\": \"Main Stage Hall A, Moscone Center\",\n  \"description\": \"Updated description with keynote speakers announced!\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/events/1", "host": ["{{baseUrl}}"], "path": ["api", "events", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Temporary Reservations (10-Min Hold)",
+      "item": [
+        {
+          "name": "Create Reservation Hold (Concurrency Safe)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.reservation && jsonData.reservation.id) {",
+                  "    pm.collectionVariables.set('activeReservationId', jsonData.reservation.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{attendeeToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticket_id\": 1,\n  \"quantity\": 2\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/reservations", "host": ["{{baseUrl}}"], "path": ["api", "reservations"] }
+          }
+        },
+        {
+          "name": "Get Reservation Details & Countdown Timer",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{attendeeToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/reservations/{{activeReservationId}}", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "{{activeReservationId}}"] }
+          }
+        },
+        {
+          "name": "Cancel Reservation Hold",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{attendeeToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/reservations/{{activeReservationId}}/cancel", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "{{activeReservationId}}", "cancel"] }
+          }
+        },
+        {
+          "name": "Get My Active Reservations",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{attendeeToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/reservations/active/me", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "active", "me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Mock Payment Gateway",
+      "item": [
+        {
+          "name": "Simulate Payment Approval (Success)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{attendeeToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reservation_id\": {{activeReservationId}},\n  \"action\": \"approve\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/payments/mock", "host": ["{{baseUrl}}"], "path": ["api", "payments", "mock"] }
+          }
+        },
+        {
+          "name": "Simulate Payment Decline (Release Hold)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{attendeeToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reservation_id\": {{activeReservationId}},\n  \"action\": \"reject\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/payments/mock", "host": ["{{baseUrl}}"], "path": ["api", "payments", "mock"] }
+          }
+        },
+        {
+          "name": "Duplicate Payment (Idempotency Check)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{attendeeToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reservation_id\": {{activeReservationId}},\n  \"action\": \"approve\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/payments/mock", "host": ["{{baseUrl}}"], "path": ["api", "payments", "mock"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Organizer Analytics & Dashboard",
+      "item": [
+        {
+          "name": "Get Organizer Analytics",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{organizerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/organizer/analytics", "host": ["{{baseUrl}}"], "path": ["api", "organizer", "analytics"] }
+          }
+        },
+        {
+          "name": "Get Organizer Events List",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{organizerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/organizer/events", "host": ["{{baseUrl}}"], "path": ["api", "organizer", "events"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Admin Platform Summary",
+      "item": [
+        {
+          "name": "Get Admin Summary (Users, Events, Bookings)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/summary", "host": ["{{baseUrl}}"], "path": ["api", "admin", "summary"] }
+          }
+        },
+        {
+          "name": "Toggle Event Status (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"active\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/admin/events/1/status", "host": ["{{baseUrl}}"], "path": ["api", "admin", "events", "1", "status"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Attendee Orders",
+      "item": [
+        {
+          "name": "Get My Confirmed Orders",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{attendeeToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/attendee/orders", "host": ["{{baseUrl}}"], "path": ["api", "attendee", "orders"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Background Jobs",
+      "item": [
+        {
+          "name": "Trigger Expiry Worker (Run Now)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/api/worker/run-now", "host": ["{{baseUrl}}"], "path": ["api", "worker", "run-now"] }
+          }
+        }
+      ]
+    }
+  ]
+}
